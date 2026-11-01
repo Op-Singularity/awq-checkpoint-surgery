@@ -46,7 +46,7 @@ jobs:
         run: pip install --index-url https://download.pytorch.org/whl/cpu torch
 
       - name: Install package
-        run: pip install safetensors numpy && pip install -e .
+        run: pip install safetensors numpy pytest && pip install -e .
 
       # the commands the README shows must exist and do something
       - name: Documented subcommands exist
