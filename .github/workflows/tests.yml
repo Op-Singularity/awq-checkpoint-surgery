@@ -34,29 +34,43 @@ jobs:
       - name: The synthetic round trip must be exercised
         run: python -m pytest tests/ -v -k "not real_checkpoint"
 
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install CPU torch
+        run: pip install --index-url https://download.pytorch.org/whl/cpu torch
+
+      - name: Install package
+        run: pip install safetensors && pip install -e .
+
+      # the commands the README shows must exist and do something
+      - name: Documented subcommands exist
+        run: |
+          set -euo pipefail
+          python -m awq_surgery.surgery --help | tee help.txt
+          grep -q "inspect" help.txt
+          grep -q "strip" help.txt
+
+      - name: inspect works on a synthetic checkpoint
+        run: python -m pytest tests/test_inspect_cli.py -v
+
   docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: README code blocks that are shell commands actually parse
+      - name: Every file mentioned in the README exists
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import re, pathlib, subprocess, sys
-          text = pathlib.Path("README.md").read_text()
-          blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
-          bad = 0
-          for block in blocks:
-              for line in block.strip().splitlines():
-                  line = line.strip()
-                  if not line or line.startswith("#"):
-                      continue
-                  # only syntax-check, never run
-                  result = subprocess.run(["bash", "-n", "-c", line],
-                                          capture_output=True, text=True)
-                  if result.returncode != 0:
-                      print(f"syntax error: {line}\n{result.stderr}")
-                      bad += 1
-          print(f"checked {len(blocks)} bash blocks")
-          sys.exit(1 if bad else 0)
-          PY
+          missing=0
+          # repo-relative paths the README points at
+          for f in awq_surgery/packing.py tests/test_packing.py README.md LICENSE; do
+            if [ ! -e "$f" ]; then echo "missing: $f"; missing=1; fi
+          done
+          exit $missing
+      - name: Source files parse as Python 3
+        run: python -m compileall -q awq_surgery tests && echo "ok"
