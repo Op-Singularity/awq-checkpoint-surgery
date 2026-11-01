@@ -1,0 +1,62 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: [ '3.10', '3.12' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # CPU-only torch keeps the download small; the packing code never needs a GPU
+      - name: Install CPU torch
+        run: pip install --index-url https://download.pytorch.org/whl/cpu torch
+
+      - name: Install package
+        run: pip install safetensors pytest && pip install -e .
+
+      - name: Unit tests
+        run: python -m pytest tests/ -v
+
+      - name: The synthetic round trip must be exercised
+        run: python -m pytest tests/ -v -k "not real_checkpoint"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: README code blocks that are shell commands actually parse
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re, pathlib, subprocess, sys
+          text = pathlib.Path("README.md").read_text()
+          blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
+          bad = 0
+          for block in blocks:
+              for line in block.strip().splitlines():
+                  line = line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  # only syntax-check, never run
+                  result = subprocess.run(["bash", "-n", "-c", line],
+                                          capture_output=True, text=True)
+                  if result.returncode != 0:
+                      print(f"syntax error: {line}\n{result.stderr}")
+                      bad += 1
+          print(f"checked {len(blocks)} bash blocks")
+          sys.exit(1 if bad else 0)
+          PY

@@ -1,5 +1,10 @@
 # awq-checkpoint-surgery
 
+[![tests](https://github.com/Op-Singularity/awq-checkpoint-surgery/actions/workflows/tests.yml/badge.svg)](https://github.com/Op-Singularity/awq-checkpoint-surgery/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![python](https://img.shields.io/badge/python-3.10%20%7C%203.12-blue)
+![int4](https://img.shields.io/badge/int4-byte--verified-success)
+
 Tools for understanding and shrinking a 4-bit AWQ checkpoint, with the one thing
 that matters when you rewrite quantised weights: **byte-exact verification of the
 packing order**.
